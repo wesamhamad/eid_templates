@@ -637,17 +637,50 @@ function switchDesign(d){
   update();
 }
 
+// Tint a (mostly-black) transparent PNG into a target color using canvas — this bakes the color
+// so html2canvas doesn't need to re-apply the multi-stage CSS filter (which it cannot do reliably).
+function tintImageToDataUrl(img,color){
+  const c=document.createElement('canvas');
+  c.width=img.naturalWidth||img.width;
+  c.height=img.naturalHeight||img.height;
+  const x=c.getContext('2d');
+  x.drawImage(img,0,0,c.width,c.height);
+  x.globalCompositeOperation='source-in';
+  x.fillStyle=color;
+  x.fillRect(0,0,c.width,c.height);
+  return c.toDataURL('image/png');
+}
+// Resolved colors per design (these are what the CSS filters approximate)
+const TINTS={
+  'dks':{calli:'#E2CFA0'},
+  'dkp':{calli:'#E2CFA0'},
+  'lts':{calli:'#0F3A6A'},
+  'ltp':{calli:'#0F3A6A'},
+  'sgs':{calli:'#E2CFA0',logo:'#F5EFDF'},
+  'sgp':{calli:'#E2CFA0',logo:'#F5EFDF'},
+  'mcs':{calli:'#8FC3C5',logo:'#A5C5C7'},
+  'mcp':{calli:'#8FC3C5',logo:'#A5C5C7'}
+};
+
 async function dlActive(){
   const info=DESIGNS[activeDesign];
   const btn=document.getElementById('bdl-active');
   const orig=btn.textContent; btn.textContent='جارٍ...';
   try {
-    // Ensure fonts and all images are loaded before rendering
     if(document.fonts && document.fonts.ready) await document.fonts.ready;
     const imgs=Array.from(document.querySelectorAll('img'));
     await Promise.all(imgs.map(img=>img.complete?Promise.resolve():new Promise(res=>{img.onload=img.onerror=res;})));
     await new Promise(r=>setTimeout(r,150));
-    const el=document.getElementById(info.wrap).firstElementChild;
+
+    // Pre-render colored versions of the calligraphy + logo for this design
+    const tints=TINTS[activeDesign]||{};
+    const wrap=document.getElementById(info.wrap);
+    const calliImg=wrap.querySelector('.calli-pic');
+    const logoImg=wrap.querySelector('.sg-logo,.mc-logo');
+    const tintedCalli=tints.calli&&calliImg?tintImageToDataUrl(calliImg,tints.calli):null;
+    const tintedLogo=tints.logo&&logoImg?tintImageToDataUrl(logoImg,tints.logo):null;
+
+    const el=wrap.firstElementChild;
     const c=await html2canvas(el,{
       scale:3,
       useCORS:true,
@@ -661,15 +694,22 @@ async function dlActive(){
           img.src=C.logoW;
           img.style.filter='none';
         });
-        // Boost corner-bracket visibility to match the live render in html2canvas
         doc.querySelectorAll('.sg-corner').forEach(function(el){el.style.display='block';});
-        // Replace ::after vignettes with real div elements (html2canvas renders divs more reliably than pseudo-elements with radial-gradient)
         doc.querySelectorAll('.wm').forEach(function(wm){
           const v=doc.createElement('div'); v.className='wm-veil'; wm.appendChild(v);
         });
         doc.querySelectorAll('.bg-pattern').forEach(function(bp){
           const v=doc.createElement('div'); v.className='bg-veil'; bp.appendChild(v);
         });
+        // Replace calligraphy / logo with the pre-tinted PNGs, then drop the CSS filter so html2canvas doesn't re-blacken them
+        if(tintedCalli){
+          const cc=doc.getElementById(info.wrap).querySelector('.calli-pic');
+          if(cc){cc.src=tintedCalli;cc.style.filter='drop-shadow(0 2px 8px rgba(0,0,0,0.18))';}
+        }
+        if(tintedLogo){
+          const ll=doc.getElementById(info.wrap).querySelector('.sg-logo,.mc-logo');
+          if(ll){ll.src=tintedLogo;ll.style.filter='none';}
+        }
       }
     });
     const a=document.createElement('a');a.download=info.file;a.href=c.toDataURL('image/png');a.click();
