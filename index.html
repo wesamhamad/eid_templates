@@ -702,27 +702,10 @@ async function dlActive(){
           img.style.filter='none';
         });
         doc.querySelectorAll('.sg-corner').forEach(function(el){el.style.display='block';});
-        doc.querySelectorAll('.wm').forEach(function(wm){
-          const v=doc.createElement('div'); v.className='wm-veil'; wm.appendChild(v);
-        });
-        doc.querySelectorAll('.bg-pattern').forEach(function(bp){
-          const v=doc.createElement('div'); v.className='bg-veil'; bp.appendChild(v);
-        });
-        // html2canvas struggles with ::before/::after radial gradients — inject them as real divs so the warm tints survive download
-        doc.querySelectorAll('.mocha').forEach(function(card){
-          const before=doc.createElement('div');
-          before.style.cssText='position:absolute;inset:0;pointer-events:none;z-index:0;background:radial-gradient(circle at 88% 12%,rgba(255,255,255,0.55),transparent 48%),radial-gradient(circle at 12% 92%,rgba(200,180,195,0.14),transparent 52%);';
-          card.insertBefore(before,card.firstChild);
-          const after=doc.createElement('div');
-          after.style.cssText='position:absolute;inset:0;pointer-events:none;opacity:.04;z-index:1;background-image:repeating-linear-gradient(45deg,#7DB5B8 0 1px,transparent 1px 16px),repeating-linear-gradient(-45deg,#7DB5B8 0 1px,transparent 1px 16px);';
-          card.insertBefore(after,card.firstChild.nextSibling);
-        });
-        doc.querySelectorAll('.sage').forEach(function(card){
-          const before=doc.createElement('div');
-          before.style.cssText='position:absolute;inset:0;pointer-events:none;z-index:0;background:radial-gradient(circle at 18% 12%,rgba(255,255,255,0.14),transparent 38%),radial-gradient(circle at 82% 88%,rgba(0,0,0,0.22),transparent 45%);';
-          card.insertBefore(before,card.firstChild);
-        });
-        // calligraphy + logo are already tinted in the live DOM — just preserve the drop-shadow for depth
+        // Removed all <div> injections for ::before/::after radial gradients — html2canvas
+        // amplified them into visible ovals/patches/colored borders. The live render keeps
+        // its pseudo-elements; the download just goes without the soft vignettes — a flatter
+        // but clean output is preferable to artifacts.
         const cc=doc.getElementById(info.wrap).querySelector('.calli-pic');
         if(cc) cc.style.filter='drop-shadow(0 2px 8px rgba(0,0,0,0.18))';
       }
