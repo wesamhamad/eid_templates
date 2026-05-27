@@ -674,8 +674,17 @@ async function dlActive(){
     // Pre-tinted images are already applied to the live DOM by switchDesign — nothing to swap here.
     const wrap=document.getElementById(info.wrap);
     const el=wrap.firstElementChild;
+    // Determine the design's intended fixed dimensions so mobile downloads match desktop exactly
+    // (bypasses the @media(max-width:420px) rule that collapses the card to 100vw on phones)
+    const isPost=info.wrap==='wrap-p'||activeDesign==='sgp'||activeDesign==='mcp';
+    const dW=isPost?400:360;
+    const dH=isPost?400:640;
     const c=await html2canvas(el,{
       scale:3,
+      width:dW,
+      height:dH,
+      windowWidth:1200,
+      windowHeight:900,
       useCORS:true,
       allowTaint:true,
       logging:false,
@@ -683,6 +692,11 @@ async function dlActive(){
       backgroundColor:info.bg,
       foreignObjectRendering:false,
       onclone:function(doc){
+        // Force the card to its designed fixed dimensions in the clone — defeats any
+        // viewport-relative override from the mobile media query
+        const target=doc.getElementById(info.wrap).firstElementChild;
+        target.style.width=dW+'px';
+        target.style.height=dH+'px';
         doc.querySelectorAll('.c-logo,.c-fl-logo').forEach(function(img){
           img.src=C.logoW;
           img.style.filter='none';
